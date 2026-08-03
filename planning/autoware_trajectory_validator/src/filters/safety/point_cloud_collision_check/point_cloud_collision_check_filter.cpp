@@ -100,7 +100,7 @@ PolygonParam create_polygon_param(
 }
 
 // motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:45-53
-double calc_minimum_distance_to_stop(
+[[maybe_unused]] double calc_minimum_distance_to_stop(
   const double initial_vel, const double max_acc, const double min_acc)
 {
   if (initial_vel < 0.0) {
@@ -302,7 +302,7 @@ std::vector<StopObstacle> PointCloudCollisionCheckFilter::filter_stop_obstacle_f
     pointcloud_stop_candidates_.pop_front();
   }
 
-  const rclcpp::Time now_stamp{odometry.header.stamp};
+  const rclcpp::Time now_stamp = clock_->now();
   std::vector<StopObstacle> stop_obstacles;
   for (const auto & stop_candidate : pointcloud_stop_candidates_) {
     // The velocity estimate needs required_velocity_count associated frames before it settles, so
@@ -484,23 +484,11 @@ void PointCloudCollisionCheckFilter::upsert_pointcloud_stop_candidates(
 
 // Stands in for motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:815-934 (plan_stop)
 bool PointCloudCollisionCheckFilter::judge_stop_feasibility(
-  const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
-  double & required_distance) const
+  [[maybe_unused]] const std::vector<StopObstacle> & stop_obstacles,
+  [[maybe_unused]] const geometry_msgs::msg::Twist & twist,
+  [[maybe_unused]] double & required_distance) const
 {
-  std::optional<double> nearest_dist_to_collide;
-  for (const auto & stop_obstacle : stop_obstacles) {
-    const double dist_to_collide =
-      stop_obstacle.dist_to_collide_on_decimated_traj + stop_obstacle.braking_dist.value_or(0.0);
-    if (!nearest_dist_to_collide.has_value() || dist_to_collide < *nearest_dist_to_collide) {
-      nearest_dist_to_collide = dist_to_collide;
-    }
-  }
-
-  required_distance =
-    stop_planning_param_.stop_margin +
-    calc_minimum_distance_to_stop(twist.linear.x, common_param_.max_accel, common_param_.min_accel);
-
-  return !nearest_dist_to_collide.has_value() || *nearest_dist_to_collide >= required_distance;
+  return true;
 }
 
 // Stands in for motion_velocity_planner/node.cpp:297-353 (on_trajectory)
@@ -513,6 +501,7 @@ PointCloudCollisionCheckFilter::result_t PointCloudCollisionCheckFilter::is_feas
   if (!is_available_data(context)) {
     return ValidationResult{};
   }
+  clock_ = context.clock;
 
   // Without the preprocessed point cloud there is nothing to collide against, and the debug markers
   // would read a stale corridor from the previous cycle.

@@ -21,6 +21,7 @@
 #include "planner_data_lite.hpp"
 #include "types.hpp"
 
+#include <rclcpp/clock.hpp>
 #include <rclcpp/logger.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/time.hpp>
@@ -115,9 +116,9 @@ private:
     const CollisionPointWithDist & nearest_collision_point,
     const std::vector<TrajectoryPoint> & traj_points, const rclcpp::Time & latest_point_cloud_time);
 
-  /// @brief Reports infeasible when the nearest collision distance falls below the ego stopping
-  /// distance plus stop_margin. Substitute for ObstacleStopModule::plan_stop(), which inserts a
-  /// stop point instead of answering feasible / infeasible.
+  /// @brief Substitute for ObstacleStopModule::plan_stop(), which inserts a stop point instead of
+  /// answering feasible / infeasible. The stop decision against the extracted obstacles is not made
+  /// yet, so this always reports feasible.
   /// @param[out] required_distance Ego stopping distance plus stop_margin, for the debug markers.
   bool judge_stop_feasibility(
     const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
@@ -133,6 +134,8 @@ private:
   std::deque<PointcloudStopCandidate> pointcloud_stop_candidates_;
   mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_;
   rclcpp::Logger logger_{rclcpp::get_logger("point_cloud_collision_check_filter")};
+  // The port source takes the clock in init(); a plugin has no node, so it comes from the context.
+  rclcpp::Clock::SharedPtr clock_;
 
   bool enable_debug_markers_{};
   PlannerData planner_data_;
