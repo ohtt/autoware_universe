@@ -683,17 +683,258 @@
             "common": {
               "type": "object",
               "properties": {
+                "max_accel": {
+                  "type": "number",
+                  "description": "Max acceleration used for ego braking distance estimation [m/s^2]. Keep in sync with common.param.yaml normal.max_acc.",
+                  "default": 1.0,
+                  "minimum": 0.0
+                },
                 "min_accel": {
                   "type": "number",
                   "description": "Min acceleration (deceleration) used for stopping distance [m/s^2]. Negative value. Keep in sync with common.param.yaml normal.min_acc.",
                   "default": -1.0,
                   "maximum": 0.0
                 },
+                "max_jerk": {
+                  "type": "number",
+                  "description": "Max jerk used for ego braking distance estimation [m/s^3]. Keep in sync with common.param.yaml normal.max_jerk.",
+                  "default": 0.6,
+                  "minimum": 0.0
+                },
                 "min_jerk": {
                   "type": "number",
                   "description": "Min jerk used for ego braking distance estimation [m/s^3]. Negative value. Keep in sync with common.param.yaml normal.min_jerk.",
                   "default": -0.6,
                   "maximum": 0.0
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "stop_planning": {
+              "type": "object",
+              "properties": {
+                "stop_margin": {
+                  "type": "number",
+                  "description": "Longitudinal margin kept between ego and the stop obstacle [m].",
+                  "default": 5.0,
+                  "minimum": 0.0
+                },
+                "obstacle_velocity_threshold_enter_fixed_stop": {
+                  "type": "number",
+                  "description": "Obstacle velocity below which the obstacle current position is used for the stop decision instead of its braking distance [m/s].",
+                  "default": 3.0,
+                  "minimum": 0.0
+                },
+                "rss_params": {
+                  "type": "object",
+                  "properties": {
+                    "use_rss_stop": {
+                      "type": "boolean",
+                      "description": "If true, obstacles faster than obstacle_velocity_threshold_enter_fixed_stop are given a braking distance instead of being dropped.",
+                      "default": true
+                    },
+                    "pointcloud_deceleration": {
+                      "type": "number",
+                      "description": "Assumed deceleration of a pointcloud obstacle [m/s^2]. Negative value.",
+                      "default": -1.0,
+                      "maximum": 0.0
+                    },
+                    "velocity_offset": {
+                      "type": "number",
+                      "description": "Velocity offset added to the obstacle velocity before computing its braking distance [m/s].",
+                      "default": -1.0
+                    },
+                    "two_wheel_objects_deceleration": {
+                      "type": "number",
+                      "description": "Assumed deceleration of bicycle/motorcycle obstacles [m/s^2]. Negative value. Unused while POINTCLOUD is the only handled label.",
+                      "default": -3.0,
+                      "maximum": 0.0
+                    },
+                    "vehicle_objects_deceleration": {
+                      "type": "number",
+                      "description": "Assumed deceleration of car/truck/bus/trailer obstacles [m/s^2]. Negative value. Unused while POINTCLOUD is the only handled label.",
+                      "default": -1.2,
+                      "maximum": 0.0
+                    },
+                    "no_wheel_objects_deceleration": {
+                      "type": "number",
+                      "description": "Assumed deceleration of unknown/pedestrian obstacles [m/s^2]. Negative value. Unused while POINTCLOUD is the only handled label.",
+                      "default": -10.0,
+                      "maximum": 0.0
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "obstacle_filtering": {
+              "type": "object",
+              "properties": {
+                "check_inside": {
+                  "type": "boolean",
+                  "description": "If true, check whether the pointcloud is inside the ego footprint corridor. If false, the filter emits no stop obstacle.",
+                  "default": true
+                },
+                "stop_obstacle_hold_time_threshold": {
+                  "type": "number",
+                  "description": "Duration for which a pointcloud stop candidate is kept after its last observation [s].",
+                  "default": 1.0,
+                  "minimum": 0.0
+                },
+                "trim_trajectory": {
+                  "type": "object",
+                  "properties": {
+                    "enable_trimming": {
+                      "type": "boolean",
+                      "description": "If true, trim the detection corridor to the ego braking distance.",
+                      "default": true
+                    },
+                    "min_trajectory_length": {
+                      "type": "number",
+                      "description": "Minimum length of the trimmed detection corridor [m].",
+                      "default": 30.0,
+                      "minimum": 0.0
+                    },
+                    "braking_distance_scale_factor": {
+                      "type": "number",
+                      "description": "Scale factor applied to the ego braking distance when trimming the detection corridor.",
+                      "default": 1.5,
+                      "minimum": 0.0
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                },
+                "lateral_margin": {
+                  "type": "object",
+                  "properties": {
+                    "nominal_margin": {
+                      "type": "number",
+                      "description": "Lateral margin added to the ego footprint for collision detection [m].",
+                      "default": 0.3,
+                      "minimum": 0.0
+                    },
+                    "additional_wheel_off_track_scale": {
+                      "type": "number",
+                      "description": "Scale factor for the additional margin against the ego front outer wheel off-track.",
+                      "default": 0.0,
+                      "minimum": 0.0
+                    },
+                    "is_moving_threshold_velocity": {
+                      "type": "number",
+                      "description": "Obstacle velocity above which the moving margin is used [m/s]. Pointcloud obstacles are always treated as stopped, so this is currently unused.",
+                      "default": 0.5,
+                      "minimum": 0.0
+                    },
+                    "additional_is_stop_margin": {
+                      "type": "number",
+                      "description": "Additional lateral margin for a stopped obstacle [m].",
+                      "default": 0.0,
+                      "minimum": 0.0
+                    },
+                    "additional_is_moving_margin": {
+                      "type": "number",
+                      "description": "Additional lateral margin for a moving obstacle [m].",
+                      "default": 0.0,
+                      "minimum": 0.0
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "pointcloud_segmentation": {
+              "type": "object",
+              "properties": {
+                "time_series_association": {
+                  "type": "object",
+                  "properties": {
+                    "max_time_diff": {
+                      "type": "number",
+                      "description": "Maximum time gap allowed when associating a collision point with an existing stop candidate [s].",
+                      "default": 0.35,
+                      "minimum": 0.0
+                    },
+                    "min_velocity": {
+                      "type": "number",
+                      "description": "Minimum obstacle velocity assumed when building the association corridor [m/s].",
+                      "default": -5.0
+                    },
+                    "max_velocity": {
+                      "type": "number",
+                      "description": "Maximum obstacle velocity assumed when building the association corridor [m/s].",
+                      "default": 30.0
+                    },
+                    "position_diff": {
+                      "type": "number",
+                      "description": "Longitudinal position tolerance added to the association corridor [m].",
+                      "default": 1.0,
+                      "minimum": 0.0
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                },
+                "velocity_estimation": {
+                  "type": "object",
+                  "properties": {
+                    "use_estimated_velocity": {
+                      "type": "boolean",
+                      "description": "If true, use the estimated obstacle velocity to choose between a fixed stop and an RSS stop.",
+                      "default": false
+                    },
+                    "min_clamp_velocity": {
+                      "type": "number",
+                      "description": "Lower clamp of the estimated obstacle velocity [m/s].",
+                      "default": 0.0
+                    },
+                    "max_clamp_velocity": {
+                      "type": "number",
+                      "description": "Upper clamp of the estimated obstacle velocity [m/s].",
+                      "default": 20.0
+                    },
+                    "required_velocity_count": {
+                      "type": "integer",
+                      "description": "Number of associated frames required before the velocity low-pass filter is seeded. No stop obstacle is emitted until then.",
+                      "default": 5,
+                      "minimum": 1
+                    },
+                    "lpf_gain": {
+                      "type": "number",
+                      "description": "Gain of the obstacle velocity low-pass filter.",
+                      "default": 0.9,
+                      "minimum": 0.0,
+                      "maximum": 1.0
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                },
+                "height_margin": {
+                  "type": "object",
+                  "properties": {
+                    "margin_from_bottom": {
+                      "type": "number",
+                      "description": "Height margin below the trajectory point used to gate collision points [m].",
+                      "default": 0.5,
+                      "minimum": 0.0
+                    },
+                    "margin_from_top": {
+                      "type": "number",
+                      "description": "Height margin above the ego roof used to gate collision points [m].",
+                      "default": 0.5,
+                      "minimum": 0.0
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
                 }
               },
               "required": [],
@@ -834,6 +1075,18 @@
                   },
                   "required": [],
                   "additionalProperties": false
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "debug": {
+              "type": "object",
+              "properties": {
+                "enable_markers": {
+                  "type": "boolean",
+                  "description": "If true, publish the debug markers of this filter.",
+                  "default": false
                 }
               },
               "required": [],
