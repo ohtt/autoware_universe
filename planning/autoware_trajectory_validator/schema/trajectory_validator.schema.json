@@ -717,7 +717,7 @@
                 "stop_margin": {
                   "type": "number",
                   "description": "Longitudinal margin kept between ego and the stop obstacle [m].",
-                  "default": 5.0,
+                  "default": 6.0,
                   "minimum": 0.0
                 },
                 "obstacle_velocity_threshold_enter_fixed_stop": {
@@ -815,8 +815,7 @@
                     "nominal_margin": {
                       "type": "number",
                       "description": "Lateral margin added to the ego footprint for collision detection [m].",
-                      "default": 0.3,
-                      "minimum": 0.0
+                      "default": 0.0
                     },
                     "additional_wheel_off_track_scale": {
                       "type": "number",
@@ -888,7 +887,7 @@
                     "use_estimated_velocity": {
                       "type": "boolean",
                       "description": "If true, use the estimated obstacle velocity to choose between a fixed stop and an RSS stop.",
-                      "default": false
+                      "default": true
                     },
                     "min_clamp_velocity": {
                       "type": "number",
@@ -923,14 +922,12 @@
                     "margin_from_bottom": {
                       "type": "number",
                       "description": "Height margin below the trajectory point used to gate collision points [m].",
-                      "default": 0.5,
-                      "minimum": 0.0
+                      "default": -0.2
                     },
                     "margin_from_top": {
                       "type": "number",
                       "description": "Height margin above the ego roof used to gate collision points [m].",
-                      "default": 0.5,
-                      "minimum": 0.0
+                      "default": -1.0
                     }
                   },
                   "required": [],

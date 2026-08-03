@@ -586,7 +586,7 @@ validator:
     stop_planning:
       stop_margin:
         type: double
-        default_value: 5.0
+        default_value: 6.0
         description: Longitudinal margin kept between ego and the stop obstacle (m).
         read_only: false
       obstacle_velocity_threshold_enter_fixed_stop:
@@ -655,7 +655,7 @@ validator:
       lateral_margin:
         nominal_margin:
           type: double
-          default_value: 0.3
+          default_value: 0.0
           description: Lateral margin added to the ego footprint for collision detection (m).
           read_only: false
         additional_wheel_off_track_scale:
@@ -703,7 +703,7 @@ validator:
       velocity_estimation:
         use_estimated_velocity:
           type: bool
-          default_value: false
+          default_value: true
           description: If true, use the estimated obstacle velocity to choose between a fixed stop and an RSS stop.
           read_only: false
         min_clamp_velocity:
@@ -729,12 +729,12 @@ validator:
       height_margin:
         margin_from_bottom:
           type: double
-          default_value: 0.5
+          default_value: -0.2
           description: Height margin below the trajectory point used to gate collision points (m).
           read_only: false
         margin_from_top:
           type: double
-          default_value: 0.5
+          default_value: -1.0
           description: Height margin above the ego roof used to gate collision points (m).
           read_only: false
     trajectory_polygon:
