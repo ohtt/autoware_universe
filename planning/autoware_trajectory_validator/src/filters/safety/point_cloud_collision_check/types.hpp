@@ -36,6 +36,7 @@ using nav_msgs::msg::Odometry;
 using Point2d = autoware_utils_geometry::Point2d;
 using Polygon2d = autoware_utils_geometry::Polygon2d;
 
+// motion_velocity_obstacle_stop_module/types.hpp:37-112
 /// @brief Stop obstacle label. Only POINTCLOUD is produced here, but the full set is kept because
 /// the assumed deceleration in calc_braking_dist_along_trajectory is selected per label.
 struct StopObstacleClassification
@@ -60,12 +61,14 @@ struct StopObstacleClassification
   Type label{};
 };
 
+// motion_velocity_obstacle_stop_module/types.hpp:116-120
 struct CollisionPointWithDist
 {
   geometry_msgs::msg::Point point;
   double dist_to_collide{};
 };
 
+// motion_velocity_obstacle_stop_module/types.hpp:122-128
 /// @brief One tracked point cloud obstacle. The velocity is not observable from a single frame, so
 /// it is estimated by associating collision points across cycles and low-pass filtering them.
 struct PointcloudStopCandidate
@@ -76,6 +79,7 @@ struct PointcloudStopCandidate
   CollisionPointWithDist latest_collision_point;
 };
 
+// motion_velocity_obstacle_stop_module/types.hpp:130-141
 struct PolygonParam
 {
   std::optional<double> trimming_length;
@@ -90,6 +94,7 @@ struct PolygonParam
   }
 };
 
+// motion_velocity_obstacle_stop_module/types.hpp:164-183 (the pointcloud constructor)
 struct StopObstacle
 {
   StopObstacle(
@@ -119,6 +124,7 @@ struct StopObstacle
   std::optional<double> braking_dist;
 };
 
+// motion_velocity_obstacle_stop_module/types.hpp:200-211
 /// @brief Decimated trajectory points paired with the one-step ego footprint polygon of each point.
 struct DetectionPolygon
 {

@@ -109,6 +109,7 @@ double calc_minimum_distance_to_stop(
   return -std::pow(initial_vel, 2) / 2.0 / min_acc;
 }
 
+// motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:261-292
 std::vector<geometry_msgs::msg::Point> collect_points_inside_footprint(
   const TrajectoryPoint & traj_point, const Polygon2d & footprint,
   const PlannerData::Pointcloud & point_cloud, const double max_height_offset_m,
@@ -142,6 +143,7 @@ std::vector<geometry_msgs::msg::Point> collect_points_inside_footprint(
   return points_inside;
 }
 
+// motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:300-312
 struct DeepestPenetration
 {
   geometry_msgs::msg::Point point;
@@ -170,6 +172,7 @@ DeepestPenetration find_deepest_penetration(
 }
 }  // namespace
 
+// Stands in for motion_velocity_planner/node.cpp:144-155 (check_with_log)
 bool PointCloudCollisionCheckFilter::is_available_data(const FilterContext & context) const
 {
   return context.odometry && context.acceleration && vehicle_info_ptr_ &&
@@ -479,6 +482,7 @@ void PointCloudCollisionCheckFilter::upsert_pointcloud_stop_candidates(
   pointcloud_stop_candidates_.push_back(new_stop_candidate);
 }
 
+// Stands in for motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:815-934 (plan_stop)
 bool PointCloudCollisionCheckFilter::judge_stop_feasibility(
   const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
   double & required_distance) const
@@ -499,6 +503,7 @@ bool PointCloudCollisionCheckFilter::judge_stop_feasibility(
   return !nearest_dist_to_collide.has_value() || *nearest_dist_to_collide >= required_distance;
 }
 
+// Stands in for motion_velocity_planner/node.cpp:297-353 (on_trajectory)
 PointCloudCollisionCheckFilter::result_t PointCloudCollisionCheckFilter::is_feasible(
   const CandidateTrajectory & candidate_trajectory, const FilterContext & context)
 {

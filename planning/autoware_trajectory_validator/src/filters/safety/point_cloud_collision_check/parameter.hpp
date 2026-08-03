@@ -24,6 +24,7 @@ namespace autoware::trajectory_validator::plugin::safety::point_cloud_collision_
 
 /// @brief Obstacle stop parameter structs. The port source declares them off an rclcpp::Node, but a
 /// pluginlib plugin has no node, so each is built from the generated parameter struct instead.
+// motion_velocity_obstacle_stop_module/parameters.hpp:39-62
 struct CommonParam
 {
   double max_accel{};
@@ -41,6 +42,7 @@ struct CommonParam
   }
 };
 
+// motion_velocity_obstacle_stop_module/parameters.hpp:90-195
 struct ObstacleFilteringParam
 {
   bool check_inside{};
@@ -88,6 +90,7 @@ struct ObstacleFilteringParam
   }
 };
 
+// motion_velocity_obstacle_stop_module/parameters.hpp:197-247
 struct PointcloudSegmentationParam
 {
   struct TimeSeriesAssociationParam
@@ -140,6 +143,7 @@ struct PointcloudSegmentationParam
   }
 };
 
+// motion_velocity_obstacle_stop_module/parameters.hpp:249-257
 struct RSSParam
 {
   bool use_rss_stop{};
@@ -152,6 +156,7 @@ struct RSSParam
   double velocity_offset{};
 };
 
+// motion_velocity_obstacle_stop_module/parameters.hpp:259-367
 struct StopPlanningParam
 {
   double stop_margin{};

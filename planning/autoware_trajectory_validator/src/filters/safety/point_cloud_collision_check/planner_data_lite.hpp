@@ -41,6 +41,7 @@ namespace autoware::trajectory_validator::plugin::safety::point_cloud_collision_
 {
 using VehicleInfo = autoware::vehicle_info_utils::VehicleInfo;
 
+// motion_velocity_planner_common/planner_data.hpp:78-84
 struct TrajectoryPolygonCollisionCheck
 {
   double decimate_trajectory_step_length{};
@@ -49,6 +50,7 @@ struct TrajectoryPolygonCollisionCheck
   double time_to_convergence{};
 };
 
+// Stands in for motion_velocity_planner_common/planner_data.hpp:329 (velocity_smoother_).
 /// velocity_smoother_ の代替。smoother 本体は持たず、
 /// calculate_min_deceleration_distance が読む min_decel / min_jerk だけ持つ。
 struct VelocitySmoother
@@ -60,6 +62,7 @@ struct VelocitySmoother
   double getMinJerk() const { return min_jerk; }
 };
 
+// motion_velocity_planner_common/planner_data.hpp:86-153
 struct PointcloudPreprocessParams
 {
   PointcloudPreprocessParams() = default;
@@ -109,11 +112,13 @@ struct PointcloudPreprocessParams
   } euclidean_clustering;
 };
 
+// motion_velocity_planner/node.cpp:230-271
 /// @brief 点群を map 系へ変換する。TF が引けない場合は nullopt を返す。
 std::optional<pcl::PointCloud<pcl::PointXYZ>> process_no_ground_pointcloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg, const tf2_ros::Buffer & tf_buffer,
   const rclcpp::Clock::SharedPtr & clock);
 
+// motion_velocity_planner_common/planner_data.hpp:155-369
 struct PlannerData
 {
 public:
@@ -123,6 +128,7 @@ public:
   PlannerData(PlannerData &&) = default;
   PlannerData & operator=(PlannerData &&) = default;
 
+  // motion_velocity_planner_common/planner_data.hpp:222-301
   class Pointcloud
   {
   public:
