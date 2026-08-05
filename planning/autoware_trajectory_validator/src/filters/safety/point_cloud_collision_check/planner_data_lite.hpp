@@ -19,10 +19,9 @@
 
 #include <autoware_trajectory_validator/autoware_trajectory_validator_param.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
-#include <rclcpp/clock.hpp>
-#include <tf2_ros/buffer.hpp>
 
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/pose.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -32,6 +31,7 @@
 #include <pcl/point_types.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -109,10 +109,16 @@ struct PointcloudPreprocessParams
   } euclidean_clustering;
 };
 
-/// @brief 点群を map 系へ変換する。TF が引けない場合は nullopt を返す。
-std::optional<pcl::PointCloud<pcl::PointXYZ>> process_no_ground_pointcloud(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg, const tf2_ros::Buffer & tf_buffer,
-  const rclcpp::Clock::SharedPtr & clock);
+/// @brief class_id フィールド（UINT8、ptv3 出力）を持つ点群から excluded_class_ids の点を除く。
+/// フィールドが無い入力は全点そのまま通す。
+pcl::PointCloud<pcl::PointXYZ> filter_pointcloud_by_class_id(
+  const sensor_msgs::msg::PointCloud2 & cloud,
+  const std::vector<std::int64_t> & excluded_class_ids);
+
+// motion_velocity_planner/node.cpp:250-258 (process_no_ground_pointcloud の変換部)
+/// @brief base_link 系の点群を map 系へ変換する。入力 frame は base_link 固定とみなす。
+pcl::PointCloud<pcl::PointXYZ> transform_pointcloud_to_map_frame(
+  const pcl::PointCloud<pcl::PointXYZ> & cloud, const geometry_msgs::msg::Pose & base_link_to_map);
 
 struct PlannerData
 {
@@ -207,6 +213,8 @@ public:
   double ego_nearest_yaw_threshold{};
   TrajectoryPolygonCollisionCheck trajectory_polygon_collision_check{};
   VelocitySmoother velocity_smoother_{};
+  // Plugin specific: the port source has no class_id field on its input point cloud.
+  std::vector<std::int64_t> excluded_class_ids{};
 
   std::optional<double> calculate_min_deceleration_distance(double target_velocity) const;
 };
