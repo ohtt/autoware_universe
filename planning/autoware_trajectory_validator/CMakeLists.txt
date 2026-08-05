@@ -102,6 +102,13 @@ if(BUILD_TESTING)
     autoware_trajectory_validator_plugins
   )
 
+  ament_add_gtest(test_point_cloud_collision_check_filter
+    test/plugins/test_point_cloud_collision_check_filter.cpp
+  )
+  target_link_libraries(test_point_cloud_collision_check_filter
+    autoware_trajectory_validator_plugins
+  )
+
   ament_add_gtest(test_pose_constant_curvature_predictor
     test/plugins/collision_check_filter/test_pose_constant_curvature_predictor.cpp
   )
