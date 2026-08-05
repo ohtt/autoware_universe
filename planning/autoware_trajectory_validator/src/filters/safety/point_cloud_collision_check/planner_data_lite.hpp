@@ -19,11 +19,14 @@
 
 #include <autoware_trajectory_validator/autoware_trajectory_validator_param.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
+#include <rclcpp/clock.hpp>
+#include <tf2_ros/buffer.hpp>
 
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/header.hpp>
 
 #include <pcl/PointIndices.h>
 #include <pcl/common/io.h>
@@ -115,10 +118,11 @@ pcl::PointCloud<pcl::PointXYZ> filter_pointcloud_by_class_id(
   const sensor_msgs::msg::PointCloud2 & cloud,
   const std::vector<std::int64_t> & excluded_class_ids);
 
-// motion_velocity_planner/node.cpp:250-258 (process_no_ground_pointcloud の変換部)
-/// @brief base_link 系の点群を map 系へ変換する。入力 frame は base_link 固定とみなす。
-pcl::PointCloud<pcl::PointXYZ> transform_pointcloud_to_map_frame(
-  const pcl::PointCloud<pcl::PointXYZ> & cloud, const geometry_msgs::msg::Pose & base_link_to_map);
+// motion_velocity_planner/node.cpp:229-259
+/// @brief 点群を map 系へ変換する。TF が引けない場合は nullopt を返す。
+std::optional<pcl::PointCloud<pcl::PointXYZ>> transform_pointcloud_to_map_frame(
+  const pcl::PointCloud<pcl::PointXYZ> & cloud, const std_msgs::msg::Header & header,
+  const tf2_ros::Buffer & tf_buffer, const rclcpp::Clock::SharedPtr & clock);
 
 struct PlannerData
 {

@@ -20,7 +20,13 @@
 #include <autoware/motion_velocity_planner_common/polygon_utils.hpp>
 #include <autoware/motion_velocity_planner_common/utils.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
+#include <rclcpp/duration.hpp>
+#include <rclcpp/logging.hpp>
+#include <rclcpp/time.hpp>
+#include <tf2/time.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <pcl/filters/crop_box.h>
@@ -43,6 +49,11 @@ namespace autoware::trajectory_validator::plugin::safety::point_cloud_collision_
 {
 namespace
 {
+rclcpp::Logger get_logger()
+{
+  return rclcpp::get_logger("PointCloudCollisionCheckFilter");
+}
+
 // motion_velocity_planner_common/planner_data.cpp:88-132
 pcl::PointCloud<pcl::PointXYZ>::Ptr crop_by_monolithic_trajectory_polygon(
   const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_pointcloud_ptr,
@@ -178,21 +189,29 @@ pcl::PointCloud<pcl::PointXYZ> filter_pointcloud_by_class_id(
   return out;
 }
 
-// motion_velocity_planner/node.cpp:250-258 (process_no_ground_pointcloud の変換部)
-// 差分: TF ではなく odometry の自車姿勢を map <- base_link として使う。
-pcl::PointCloud<pcl::PointXYZ> transform_pointcloud_to_map_frame(
-  const pcl::PointCloud<pcl::PointXYZ> & cloud, const geometry_msgs::msg::Pose & base_link_to_map)
+// motion_velocity_planner/node.cpp:244-270
+std::optional<pcl::PointCloud<pcl::PointXYZ>> transform_pointcloud_to_map_frame(
+  const pcl::PointCloud<pcl::PointXYZ> & cloud, const std_msgs::msg::Header & header,
+  const tf2_ros::Buffer & tf_buffer, const rclcpp::Clock::SharedPtr & clock)
 {
-  const auto & p = base_link_to_map.position;
-  const auto & q = base_link_to_map.orientation;
-  const Eigen::Affine3d base_link_to_map_affine =
-    Eigen::Translation3d(p.x, p.y, p.z) * Eigen::Quaterniond(q.w, q.x, q.y, q.z).normalized();
-  const Eigen::Affine3f affine = base_link_to_map_affine.cast<float>();
+  geometry_msgs::msg::TransformStamped transform;
+  const bool is_pcl_time_valid =
+    (clock->now() - rclcpp::Time(header.stamp)) < rclcpp::Duration::from_seconds(1.0);
 
-  pcl::PointCloud<pcl::PointXYZ> pc_transformed;
-  if (!cloud.empty()) {
-    autoware_utils_pcl::transform_pointcloud(cloud, pc_transformed, affine);
+  if (is_pcl_time_valid && tf_buffer.canTransform("map", header.frame_id, header.stamp)) {
+    transform = tf_buffer.lookupTransform(
+      "map", header.frame_id, header.stamp, rclcpp::Duration::from_seconds(0.05));
+  } else if (tf_buffer.canTransform("map", header.frame_id, tf2::TimePointZero)) {
+    transform = tf_buffer.lookupTransform("map", header.frame_id, tf2::TimePointZero);
+    RCLCPP_DEBUG(get_logger(), "pcl time is invalid, using tf2::TimePointZero");
+  } else {
+    RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud");
+    return std::nullopt;
   }
+
+  const Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
+  pcl::PointCloud<pcl::PointXYZ> pc_transformed;
+  if (!cloud.empty()) autoware_utils_pcl::transform_pointcloud(cloud, pc_transformed, affine);
 
   pc_transformed.header = cloud.header;
   pc_transformed.header.frame_id = "map";
