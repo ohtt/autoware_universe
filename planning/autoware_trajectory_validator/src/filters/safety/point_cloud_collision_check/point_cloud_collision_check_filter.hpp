@@ -117,8 +117,8 @@ private:
     const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time);
 
   /// @brief Substitute for ObstacleStopModule::plan_stop(), which inserts a stop point instead of
-  /// answering feasible / infeasible. The stop decision against the extracted obstacles is not made
-  /// yet, so this always reports feasible.
+  /// answering feasible / infeasible. Reports infeasible when the nearest obstacle is closer than
+  /// the distance ego needs to stop in front of it.
   /// @param[out] required_distance Ego stopping distance plus stop_margin, for the debug markers.
   bool judge_stop_feasibility(
     const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,

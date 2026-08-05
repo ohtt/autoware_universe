@@ -100,7 +100,7 @@ PolygonParam create_polygon_param(
 }
 
 // motion_velocity_obstacle_stop_module/decision_helpers.hpp:40-48
-[[maybe_unused]] double calc_minimum_distance_to_stop(
+double calc_minimum_distance_to_stop(
   const double initial_vel, const double max_acc, const double min_acc)
 {
   if (initial_vel < 0.0) {
@@ -462,11 +462,25 @@ void PointCloudCollisionCheckFilter::upsert_pointcloud_stop_candidates(
 
 // Stands in for motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:815-934 (plan_stop)
 bool PointCloudCollisionCheckFilter::judge_stop_feasibility(
-  [[maybe_unused]] const std::vector<StopObstacle> & stop_obstacles,
-  [[maybe_unused]] const geometry_msgs::msg::Twist & twist,
-  [[maybe_unused]] double & required_distance) const
+  const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
+  double & required_distance) const
 {
-  return true;
+  std::optional<double> nearest_dist_to_collide;
+  for (const auto & stop_obstacle : stop_obstacles) {
+    // Under RSS the obstacle keeps moving away while ego brakes, so its own braking distance is
+    // added to the distance ego may cover.
+    const double dist_to_collide =
+      stop_obstacle.dist_to_collide_on_decimated_traj + stop_obstacle.braking_dist.value_or(0.0);
+    if (!nearest_dist_to_collide.has_value() || dist_to_collide < *nearest_dist_to_collide) {
+      nearest_dist_to_collide = dist_to_collide;
+    }
+  }
+
+  required_distance =
+    stop_planning_param_.stop_margin +
+    calc_minimum_distance_to_stop(twist.linear.x, common_param_.max_accel, common_param_.min_accel);
+
+  return !nearest_dist_to_collide.has_value() || *nearest_dist_to_collide >= required_distance;
 }
 
 // Stands in for motion_velocity_planner/node.cpp:297-353 (on_trajectory)
