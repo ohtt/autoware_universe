@@ -17,17 +17,41 @@
 
 #include "autoware/trajectory_validator/validator_interface.hpp"
 #include "debug_marker.hpp"
+#include "parameter.hpp"
 #include "planner_data_lite.hpp"
 #include "types.hpp"
 
+#include <rclcpp/clock.hpp>
+#include <rclcpp/logger.hpp>
+#include <rclcpp/logging.hpp>
+#include <rclcpp/time.hpp>
+
+#include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 
+#include <deque>
+#include <map>
+#include <optional>
+#include <unordered_map>
 #include <vector>
 
 namespace autoware::trajectory_validator::plugin::safety
 {
+using point_cloud_collision_check::CollisionPointWithDist;
+using point_cloud_collision_check::CommonParam;
 using point_cloud_collision_check::DebugData;
+using point_cloud_collision_check::DetectionPolygon;
+using point_cloud_collision_check::ObstacleFilteringParam;
+using point_cloud_collision_check::Odometry;
 using point_cloud_collision_check::PlannerData;
+using point_cloud_collision_check::PointcloudSegmentationParam;
+using point_cloud_collision_check::PointcloudStopCandidate;
+using point_cloud_collision_check::Polygon2d;
+using point_cloud_collision_check::PolygonParam;
+using point_cloud_collision_check::StopObstacle;
+using point_cloud_collision_check::StopObstacleClassification;
+using point_cloud_collision_check::StopPlanningParam;
+using point_cloud_collision_check::TrajectoryPolygonCollisionCheck;
 
 /**
  * @brief PointCloudCollisionCheckFilter class - checks the trajectory against the semantic
@@ -59,14 +83,57 @@ private:
     const std::vector<TrajectoryPoint> & raw_trajectory_points, const FilterContext & context);
 
   /// @brief 点群から停止対象を抽出する。移植元 ObstacleStopModule の plan() の点群経路。
-  std::vector<point_cloud_collision_check::StopObstacle> calc_obstacle_stop(
-    const std::vector<TrajectoryPoint> & raw_trajectory_points);
+  std::vector<StopObstacle> calc_obstacle_stop(
+    const std::vector<TrajectoryPoint> & raw_trajectory_points, const PlannerData & planner_data);
+
+  /// @brief 検出コリドー内の最近傍衝突点を時系列候補に反映し、速度が定まった候補を停止対象にする。
+  std::vector<StopObstacle> filter_stop_obstacle_for_point_cloud(
+    const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
+    const std::vector<TrajectoryPoint> & decimated_traj_points,
+    const PlannerData::Pointcloud & point_cloud, const VehicleInfo & vehicle_info,
+    const double x_offset_to_bumper,
+    const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check);
+
+  std::optional<double> calc_ego_forwarding_braking_distance(
+    const std::vector<TrajectoryPoint> & traj_points, const Odometry & odometry) const;
+
+  DetectionPolygon get_trajectory_polygon(
+    const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
+    const geometry_msgs::msg::Pose & current_ego_pose, const PolygonParam & polygon_param,
+    const bool enable_to_consider_current_pose, const double time_to_convergence,
+    const double decimate_trajectory_step_length) const;
+
+  std::optional<CollisionPointWithDist> get_nearest_collision_point(
+    const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
+    const PlannerData::Pointcloud & point_cloud, const double x_offset_to_bumper,
+    const VehicleInfo & vehicle_info) const;
+
+  /// @brief 今回の衝突点を追跡中の候補に対応づけ、速度推定を更新する。
+  /// 候補 deque はサイクルを跨いで共有するため、1 サイクルに 1 候補軌道の評価を前提とする。
+  void upsert_pointcloud_stop_candidates(
+    const CollisionPointWithDist & nearest_collision_point,
+    const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time);
 
   /// @brief 停止対象から停止可否を判定する。未実装のため現状は常に true を返す。
+  /// @param[out] required_distance 自車の停止距離 + stop_margin。debug marker 用。
   bool judge_stop_feasibility(
-    const std::vector<point_cloud_collision_check::StopObstacle> & stop_obstacles,
-    const geometry_msgs::msg::Twist & twist) const;
+    const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
+    double & required_distance) const;
 
+  CommonParam common_param_{};
+  StopPlanningParam stop_planning_param_{};
+  std::unordered_map<StopObstacleClassification::Type, ObstacleFilteringParam>
+    obstacle_filtering_params_{};
+  PointcloudSegmentationParam pointcloud_segmentation_param_{};
+
+  // 速度推定は複数サイクルの観測を要するため、deque は 1 サイクルより長く生きる。
+  std::deque<PointcloudStopCandidate> pointcloud_stop_candidates{};
+  mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_{};
+  rclcpp::Logger logger_{rclcpp::get_logger("point_cloud_collision_check_filter")};
+  // 移植元は init() で clock を受け取るが、plugin には node が無いので context から受け取る。
+  rclcpp::Clock::SharedPtr clock_{};
+
+  bool enable_debug_markers_{};
   PlannerData planner_data_{};
   DebugData debug_data_{};
 };

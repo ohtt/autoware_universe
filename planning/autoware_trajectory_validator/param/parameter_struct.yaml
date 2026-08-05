@@ -563,16 +563,180 @@ validator:
 
   point_cloud_collision_check:
     common:
+      max_accel:
+        type: double
+        default_value: 1.0
+        description: Max acceleration used for ego braking distance estimation (m/s^2). Keep in sync with common.param.yaml normal.max_acc.
+        read_only: false
       min_accel:
         type: double
         default_value: -1.0
         description: Min acceleration (deceleration) used for stopping distance (m/s^2, negative). Keep in sync with common.param.yaml normal.min_acc.
+        read_only: false
+      max_jerk:
+        type: double
+        default_value: 0.6
+        description: Max jerk used for ego braking distance estimation (m/s^3). Keep in sync with common.param.yaml normal.max_jerk.
         read_only: false
       min_jerk:
         type: double
         default_value: -0.6
         description: Min jerk used for ego braking distance estimation (m/s^3, negative). Keep in sync with common.param.yaml normal.min_jerk.
         read_only: false
+    stop_planning:
+      stop_margin:
+        type: double
+        default_value: 6.0
+        description: Longitudinal margin kept between ego and the stop obstacle (m).
+        read_only: false
+      obstacle_velocity_threshold_enter_fixed_stop:
+        type: double
+        default_value: 3.0
+        description: Obstacle velocity (m/s) below which the obstacle current position is used for the stop decision instead of its braking distance.
+        read_only: false
+      rss_params:
+        use_rss_stop:
+          type: bool
+          default_value: true
+          description: If true, obstacles faster than obstacle_velocity_threshold_enter_fixed_stop are given a braking distance instead of being dropped.
+          read_only: false
+        pointcloud_deceleration:
+          type: double
+          default_value: -1.0
+          description: Assumed deceleration of a pointcloud obstacle (m/s^2, negative).
+          read_only: false
+        velocity_offset:
+          type: double
+          default_value: -1.0
+          description: Velocity offset (m/s) added to the obstacle velocity before computing its braking distance.
+          read_only: false
+        two_wheel_objects_deceleration:
+          type: double
+          default_value: -3.0
+          description: Assumed deceleration of bicycle/motorcycle obstacles (m/s^2, negative). Unused while POINTCLOUD is the only handled label.
+          read_only: false
+        vehicle_objects_deceleration:
+          type: double
+          default_value: -1.2
+          description: Assumed deceleration of car/truck/bus/trailer obstacles (m/s^2, negative). Unused while POINTCLOUD is the only handled label.
+          read_only: false
+        no_wheel_objects_deceleration:
+          type: double
+          default_value: -10.0
+          description: Assumed deceleration of unknown/pedestrian obstacles (m/s^2, negative). Unused while POINTCLOUD is the only handled label.
+          read_only: false
+    obstacle_filtering:
+      check_inside:
+        type: bool
+        default_value: true
+        description: If true, check whether the pointcloud is inside the ego footprint corridor. When false the filter emits no stop obstacle.
+        read_only: false
+      stop_obstacle_hold_time_threshold:
+        type: double
+        default_value: 1.0
+        description: Duration (s) for which a pointcloud stop candidate is kept after its last observation.
+        read_only: false
+      trim_trajectory:
+        enable_trimming:
+          type: bool
+          default_value: true
+          description: If true, trim the detection corridor to the ego braking distance.
+          read_only: false
+        min_trajectory_length:
+          type: double
+          default_value: 30.0
+          description: Minimum length of the trimmed detection corridor (m).
+          read_only: false
+        braking_distance_scale_factor:
+          type: double
+          default_value: 1.5
+          description: Scale factor applied to the ego braking distance when trimming the detection corridor.
+          read_only: false
+      lateral_margin:
+        nominal_margin:
+          type: double
+          default_value: 0.0
+          description: Lateral margin added to the ego footprint for collision detection (m).
+          read_only: false
+        additional_wheel_off_track_scale:
+          type: double
+          default_value: 0.0
+          description: Scale factor for the additional margin against the ego front outer wheel off-track.
+          read_only: false
+        is_moving_threshold_velocity:
+          type: double
+          default_value: 0.5
+          description: Obstacle velocity (m/s) above which the moving margin is used. Pointcloud obstacles are always treated as stopped, so this is currently unused.
+          read_only: false
+        additional_is_stop_margin:
+          type: double
+          default_value: 0.0
+          description: Additional lateral margin for a stopped obstacle (m).
+          read_only: false
+        additional_is_moving_margin:
+          type: double
+          default_value: 0.0
+          description: Additional lateral margin for a moving obstacle (m).
+          read_only: false
+    pointcloud_segmentation:
+      time_series_association:
+        max_time_diff:
+          type: double
+          default_value: 0.35
+          description: Maximum time gap (s) allowed when associating a collision point with an existing stop candidate.
+          read_only: false
+        min_velocity:
+          type: double
+          default_value: -5.0
+          description: Minimum obstacle velocity (m/s) assumed when building the association corridor.
+          read_only: false
+        max_velocity:
+          type: double
+          default_value: 30.0
+          description: Maximum obstacle velocity (m/s) assumed when building the association corridor.
+          read_only: false
+        position_diff:
+          type: double
+          default_value: 1.0
+          description: Longitudinal position tolerance (m) added to the association corridor.
+          read_only: false
+      velocity_estimation:
+        use_estimated_velocity:
+          type: bool
+          default_value: true
+          description: If true, use the estimated obstacle velocity to choose between a fixed stop and an RSS stop.
+          read_only: false
+        min_clamp_velocity:
+          type: double
+          default_value: 0.0
+          description: Lower clamp of the estimated obstacle velocity (m/s).
+          read_only: false
+        max_clamp_velocity:
+          type: double
+          default_value: 20.0
+          description: Upper clamp of the estimated obstacle velocity (m/s).
+          read_only: false
+        required_velocity_count:
+          type: int
+          default_value: 5
+          description: Number of associated frames required before the velocity low-pass filter is seeded. No stop obstacle is emitted until then.
+          read_only: false
+        lpf_gain:
+          type: double
+          default_value: 0.9
+          description: Gain of the obstacle velocity low-pass filter.
+          read_only: false
+      height_margin:
+        margin_from_bottom:
+          type: double
+          default_value: -0.2
+          description: Height margin below the trajectory point used to gate collision points (m).
+          read_only: false
+        margin_from_top:
+          type: double
+          default_value: -1.0
+          description: Height margin above the ego roof used to gate collision points (m).
+          read_only: false
     trajectory_polygon:
       decimate_trajectory_step_length:
         type: double
@@ -668,3 +832,9 @@ validator:
           default_value: 100000
           description: Maximum cluster size.
           read_only: false
+    debug:
+      enable_markers:
+        type: bool
+        default_value: false
+        description: If true, publish the debug markers of this filter.
+        read_only: false
