@@ -51,7 +51,17 @@ using point_cloud_collision_check::PolygonParam;
 using point_cloud_collision_check::StopObstacle;
 using point_cloud_collision_check::StopObstacleClassification;
 using point_cloud_collision_check::StopPlanningParam;
+using point_cloud_collision_check::TrajectoryPoint;
 using point_cloud_collision_check::TrajectoryPolygonCollisionCheck;
+
+/// @brief Tells whether decimate_trajectory_points_from_ego() can decimate this candidate.
+/// A diffusion generator may emit a trajectory that collapses to a point once trimmed at ego, and
+/// the resampler then either throws or silently returns the input undecimated.
+/// Mirrors motion_utils/resample/resample_utils.hpp validate_arguments() over the points from ego.
+bool validate_trajectory(
+  const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,
+  const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
+  const double decimate_trajectory_step_length);
 
 /**
  * @brief PointCloudCollisionCheckFilter class - checks the trajectory against the semantic
@@ -71,7 +81,8 @@ public:
 private:
   /// @brief Tells whether the inputs needed for an evaluation are present and usable.
   /// When false, is_feasible skips the evaluation and reports feasible.
-  bool is_available_data(const FilterContext & context) const;
+  bool is_available_data(
+    const CandidateTrajectory & candidate_trajectory, const FilterContext & context) const;
 
   /// @brief Sets the parameter-derived fields of planner_data_.
   /// The port source splits this between the PlannerData constructor and on_set_param.
