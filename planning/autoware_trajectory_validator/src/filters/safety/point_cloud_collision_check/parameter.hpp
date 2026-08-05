@@ -93,7 +93,7 @@ struct ObstacleFilteringParam
 // motion_velocity_obstacle_stop_module/parameters.hpp:197-247
 struct PointcloudSegmentationParam
 {
-  struct TimeSeriesAssociationParam
+  struct
   {
     double max_time_diff{};
     double min_velocity{};
@@ -101,7 +101,7 @@ struct PointcloudSegmentationParam
     double position_diff{};
   } time_series_association;
 
-  struct VelocityEstimationParam
+  struct
   {
     bool use_estimated_velocity{};
     double min_clamp_velocity{};
@@ -110,7 +110,7 @@ struct PointcloudSegmentationParam
     double lpf_gain{};
   } velocity_estimation;
 
-  struct HeightMarginParam
+  struct
   {
     double margin_from_bottom{};
     double margin_from_top{};

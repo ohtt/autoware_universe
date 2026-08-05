@@ -64,7 +64,7 @@ struct StopObstacleClassification
 // motion_velocity_obstacle_stop_module/types.hpp:116-120
 struct CollisionPointWithDist
 {
-  geometry_msgs::msg::Point point;
+  geometry_msgs::msg::Point point{};
   double dist_to_collide{};
 };
 
@@ -73,7 +73,7 @@ struct CollisionPointWithDist
 /// it is estimated by associating collision points across cycles and low-pass filtering them.
 struct PointcloudStopCandidate
 {
-  std::vector<double> initial_velocities;
+  std::vector<double> initial_velocities{};
   autoware::signal_processing::LowpassFilter1d vel_lpf{0.0};
   rclcpp::Time latest_collision_pointcloud_time;
   CollisionPointWithDist latest_collision_point;
@@ -82,7 +82,7 @@ struct PointcloudStopCandidate
 // motion_velocity_obstacle_stop_module/types.hpp:130-141
 struct PolygonParam
 {
-  std::optional<double> trimming_length;
+  std::optional<double> trimming_length{};
   double lateral_margin{};
   double off_track_scale{};
 
@@ -98,7 +98,7 @@ struct PolygonParam
 struct StopObstacle
 {
   StopObstacle(
-    const rclcpp::Time & arg_stamp, const StopObstacleClassification & arg_classification,
+    const rclcpp::Time & arg_stamp, const StopObstacleClassification & arg_object_classification,
     const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
     const double arg_dist_to_collide_on_decimated_traj, const PolygonParam & arg_polygon_param,
     const std::optional<double> arg_braking_dist = std::nullopt)
@@ -106,11 +106,11 @@ struct StopObstacle
     velocity(arg_lon_velocity),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
-    classification(arg_classification),
+    classification(arg_object_classification),
     polygon_param(arg_polygon_param),
     braking_dist(arg_braking_dist)
   {
-    if (arg_classification.label != StopObstacleClassification::Type::POINTCLOUD) {
+    if (arg_object_classification.label != StopObstacleClassification::Type::POINTCLOUD) {
       throw std::invalid_argument("StopObstacle must be constructed with the POINTCLOUD label");
     }
   }

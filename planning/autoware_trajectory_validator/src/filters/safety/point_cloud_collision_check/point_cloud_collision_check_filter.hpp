@@ -114,7 +114,7 @@ private:
   /// because the candidate deque is shared across cycles.
   void upsert_pointcloud_stop_candidates(
     const CollisionPointWithDist & nearest_collision_point,
-    const std::vector<TrajectoryPoint> & traj_points, const rclcpp::Time & latest_point_cloud_time);
+    const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time);
 
   /// @brief Substitute for ObstacleStopModule::plan_stop(), which inserts a stop point instead of
   /// answering feasible / infeasible. The stop decision against the extracted obstacles is not made
@@ -131,7 +131,7 @@ private:
   PointcloudSegmentationParam pointcloud_segmentation_param_;
 
   // Velocity estimation needs observations from several cycles, so the deque outlives one cycle.
-  std::deque<PointcloudStopCandidate> pointcloud_stop_candidates_;
+  std::deque<PointcloudStopCandidate> pointcloud_stop_candidates;
   mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_;
   rclcpp::Logger logger_{rclcpp::get_logger("point_cloud_collision_check_filter")};
   // The port source takes the clock in init(); a plugin has no node, so it comes from the context.
