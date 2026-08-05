@@ -69,25 +69,24 @@ public:
   void update_parameters(const validator::Params & params) final;
 
 private:
-  /// @brief Tells whether the inputs needed for an evaluation are present.
-  /// When false, is_feasible skips the evaluation and reports feasible.
+  /// @brief 評価に必要な入力が揃っているかを判定する。
+  /// false のとき is_feasible は評価せず feasible（ValidationResult{}）を返す。
   bool is_available_data(const FilterContext & context) const;
 
-  /// @brief Sets the parameter-derived fields of planner_data_.
-  /// The port source splits this between the PlannerData constructor and on_set_param.
+  /// @brief planner_data_ のパラメータ由来フィールドを設定する。
+  /// 移植元では PlannerData のコンストラクタと on_set_param が担う。
   void set_planner_data_param(const validator::Params::PointCloudCollisionCheck & p);
 
-  /// @brief Updates the topic-derived fields of planner_data_ and preprocesses the point cloud.
-  /// The port source does this in the node instead of the module.
-  /// @return false when TF is unavailable, so the point cloud could not be preprocessed.
+  /// @brief planner_data_ のトピック由来フィールドを更新し、点群の前処理まで行う。
+  /// 移植元では node の update_planner_data が担う。TF が引けず点群を前処理できなければ false。
   bool update_planner_data(
     const std::vector<TrajectoryPoint> & raw_trajectory_points, const FilterContext & context);
 
-  /// @brief Extracts stop obstacles from the point cloud. Port of the point cloud path of
-  /// ObstacleStopModule::plan().
+  /// @brief 点群から停止対象を抽出する。移植元 ObstacleStopModule の plan() の点群経路。
   std::vector<StopObstacle> calc_obstacle_stop(
     const std::vector<TrajectoryPoint> & raw_trajectory_points, const PlannerData & planner_data);
 
+  /// @brief 検出コリドー内の最近傍衝突点を時系列候補に反映し、速度が定まった候補を停止対象にする。
   std::vector<StopObstacle> filter_stop_obstacle_for_point_cloud(
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
@@ -109,37 +108,34 @@ private:
     const PlannerData::Pointcloud & point_cloud, const double x_offset_to_bumper,
     const VehicleInfo & vehicle_info) const;
 
-  /// @brief Associates the collision point of this cycle with a tracked candidate and updates its
-  /// velocity estimate. Assumes is_feasible evaluates a single candidate trajectory per cycle,
-  /// because the candidate deque is shared across cycles.
+  /// @brief 今回の衝突点を追跡中の候補に対応づけ、速度推定を更新する。
+  /// 候補 deque はサイクルを跨いで共有するため、1 サイクルに 1 候補軌道の評価を前提とする。
   void upsert_pointcloud_stop_candidates(
     const CollisionPointWithDist & nearest_collision_point,
     const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time);
 
-  /// @brief Substitute for ObstacleStopModule::plan_stop(), which inserts a stop point instead of
-  /// answering feasible / infeasible. The stop decision against the extracted obstacles is not made
-  /// yet, so this always reports feasible.
-  /// @param[out] required_distance Ego stopping distance plus stop_margin, for the debug markers.
+  /// @brief 停止対象から停止可否を判定する。未実装のため現状は常に true を返す。
+  /// @param[out] required_distance 自車の停止距離 + stop_margin。debug marker 用。
   bool judge_stop_feasibility(
     const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
     double & required_distance) const;
 
-  CommonParam common_param_;
-  StopPlanningParam stop_planning_param_;
+  CommonParam common_param_{};
+  StopPlanningParam stop_planning_param_{};
   std::unordered_map<StopObstacleClassification::Type, ObstacleFilteringParam>
-    obstacle_filtering_params_;
-  PointcloudSegmentationParam pointcloud_segmentation_param_;
+    obstacle_filtering_params_{};
+  PointcloudSegmentationParam pointcloud_segmentation_param_{};
 
-  // Velocity estimation needs observations from several cycles, so the deque outlives one cycle.
-  std::deque<PointcloudStopCandidate> pointcloud_stop_candidates;
-  mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_;
+  // 速度推定は複数サイクルの観測を要するため、deque は 1 サイクルより長く生きる。
+  std::deque<PointcloudStopCandidate> pointcloud_stop_candidates{};
+  mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_{};
   rclcpp::Logger logger_{rclcpp::get_logger("point_cloud_collision_check_filter")};
-  // The port source takes the clock in init(); a plugin has no node, so it comes from the context.
-  rclcpp::Clock::SharedPtr clock_;
+  // 移植元は init() で clock を受け取るが、plugin には node が無いので context から受け取る。
+  rclcpp::Clock::SharedPtr clock_{};
 
   bool enable_debug_markers_{};
-  PlannerData planner_data_;
-  DebugData debug_data_;
+  PlannerData planner_data_{};
+  DebugData debug_data_{};
 };
 }  // namespace autoware::trajectory_validator::plugin::safety
 
