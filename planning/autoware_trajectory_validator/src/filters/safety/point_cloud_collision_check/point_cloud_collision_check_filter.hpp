@@ -69,7 +69,7 @@ public:
   void update_parameters(const validator::Params & params) final;
 
 private:
-  /// @brief Tells whether the inputs needed for an evaluation are present.
+  /// @brief Tells whether the inputs needed for an evaluation are present and usable.
   /// When false, is_feasible skips the evaluation and reports feasible.
   bool is_available_data(const FilterContext & context) const;
 
@@ -79,8 +79,7 @@ private:
 
   /// @brief Updates the topic-derived fields of planner_data_ and preprocesses the point cloud.
   /// The port source does this in the node instead of the module.
-  /// @return false when TF is unavailable, so the point cloud could not be preprocessed.
-  bool update_planner_data(
+  void update_planner_data(
     const std::vector<TrajectoryPoint> & raw_trajectory_points, const FilterContext & context);
 
   /// @brief Extracts stop obstacles from the point cloud. Port of the point cloud path of

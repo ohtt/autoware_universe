@@ -177,6 +177,7 @@
       obstacle_filtering:
         check_inside: true
         stop_obstacle_hold_time_threshold: 1.0
+        excluded_class_ids: [0, 1, 2, 3, 4, 24, 25]
         trim_trajectory:
           enable_trimming: true
           min_trajectory_length: 30.0

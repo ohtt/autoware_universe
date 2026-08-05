@@ -36,10 +36,11 @@ namespace polygon_utils = autoware::motion_velocity_planner::polygon_utils;
 namespace utils = autoware::motion_velocity_planner::utils;
 
 using point_cloud_collision_check::emit_debug_markers;
+using point_cloud_collision_check::filter_pointcloud_by_class_id;
 using point_cloud_collision_check::Point2d;
 using point_cloud_collision_check::PointcloudPreprocessParams;
-using point_cloud_collision_check::process_no_ground_pointcloud;
 using point_cloud_collision_check::RSSParam;
+using point_cloud_collision_check::transform_pointcloud_to_map_frame;
 
 namespace
 {
@@ -114,8 +115,13 @@ double calc_minimum_distance_to_stop(
 // Stands in for motion_velocity_planner/node.cpp:144-155 (check_with_log)
 bool PointCloudCollisionCheckFilter::is_available_data(const FilterContext & context) const
 {
-  return context.odometry && context.acceleration && vehicle_info_ptr_ &&
-         context.segmented_pointcloud && context.tf_buffer && context.clock;
+  if (
+    !context.odometry || !context.acceleration || !vehicle_info_ptr_ ||
+    !context.segmented_pointcloud || !context.clock) {
+    return false;
+  }
+  // The odometry pose is a map <- base_link transform, so no other input frame can be handled.
+  return context.segmented_pointcloud->header.frame_id == "base_link";
 }
 
 // motion_velocity_planner_common/planner_data.cpp:239-260 and
@@ -135,9 +141,11 @@ void PointCloudCollisionCheckFilter::set_planner_data_param(
   // Stands in for motion_velocity_planner/node.cpp:262-266 (set_velocity_smoother_params).
   planner_data_.velocity_smoother_.min_decel = p.common.min_accel;
   planner_data_.velocity_smoother_.min_jerk = p.common.min_jerk;
+
+  planner_data_.excluded_class_ids = p.obstacle_filtering.excluded_class_ids;
 }
 
-bool PointCloudCollisionCheckFilter::update_planner_data(
+void PointCloudCollisionCheckFilter::update_planner_data(
   const std::vector<TrajectoryPoint> & raw_trajectory_points, const FilterContext & context)
 {
   // motion_velocity_planner_common/planner_data.cpp:240-241
@@ -154,18 +162,17 @@ bool PointCloudCollisionCheckFilter::update_planner_data(
     planner_data_.is_driving_forward = is_driving_forward.value();
   }
 
-  // motion_velocity_planner/node.cpp:176-195
+  const auto class_filtered_pointcloud =
+    filter_pointcloud_by_class_id(*context.segmented_pointcloud, planner_data_.excluded_class_ids);
   auto no_ground_pointcloud =
-    process_no_ground_pointcloud(context.segmented_pointcloud, *context.tf_buffer, context.clock);
-  if (!no_ground_pointcloud) {
-    return false;
-  }
+    transform_pointcloud_to_map_frame(class_filtered_pointcloud, context.odometry->pose.pose);
+
+  // motion_velocity_planner/node.cpp:176-195
   planner_data_.no_ground_pointcloud.preprocess_pointcloud(
-    std::move(*no_ground_pointcloud), raw_trajectory_points, planner_data_.current_odometry,
+    std::move(no_ground_pointcloud), raw_trajectory_points, planner_data_.current_odometry,
     planner_data_.calculate_min_deceleration_distance(0.0).value_or(0.0),
     planner_data_.vehicle_info_, planner_data_.trajectory_polygon_collision_check,
     planner_data_.ego_nearest_dist_threshold, planner_data_.ego_nearest_yaw_threshold);
-  return true;
 }
 
 // motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:169-230 (plan)
@@ -495,11 +502,7 @@ PointCloudCollisionCheckFilter::result_t PointCloudCollisionCheckFilter::is_feas
   }
   clock_ = context.clock;
 
-  // Without the preprocessed point cloud there is nothing to collide against, and the debug markers
-  // would read a stale corridor from the previous cycle.
-  if (!update_planner_data(candidate_trajectory.points, context)) {
-    return ValidationResult{};
-  }
+  update_planner_data(candidate_trajectory.points, context);
 
   const auto stop_obstacles = calc_obstacle_stop(candidate_trajectory.points, planner_data_);
 

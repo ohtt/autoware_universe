@@ -785,6 +785,14 @@
                   "default": 1.0,
                   "minimum": 0.0
                 },
+                "excluded_class_ids": {
+                  "type": "array",
+                  "description": "Semantic class ids dropped from the input pointcloud. Applied only when the input has a class_id field (UINT8).",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "default": [0, 1, 2, 3, 4, 24, 25]
+                },
                 "trim_trajectory": {
                   "type": "object",
                   "properties": {

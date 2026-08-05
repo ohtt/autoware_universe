@@ -636,6 +636,11 @@ validator:
         default_value: 1.0
         description: Duration (s) for which a pointcloud stop candidate is kept after its last observation.
         read_only: false
+      excluded_class_ids:
+        type: int_array
+        default_value: [0, 1, 2, 3, 4, 24, 25]
+        description: Semantic class ids dropped from the input pointcloud. Applied only when the input has a class_id field (UINT8).
+        read_only: false
       trim_trajectory:
         enable_trimming:
           type: bool
