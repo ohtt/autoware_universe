@@ -14,6 +14,8 @@
 
 #include "point_cloud_collision_check_filter.hpp"
 
+#include <autoware/motion_utils/constants.hpp>
+#include <autoware/motion_utils/resample/resample_utils.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/motion_velocity_planner_common/polygon_utils.hpp>
 #include <autoware/motion_velocity_planner_common/utils.hpp>
@@ -112,11 +114,50 @@ double calc_minimum_distance_to_stop(
 
 }  // namespace
 
-// Stands in for motion_velocity_planner/node.cpp:144-155 (check_with_log)
-bool PointCloudCollisionCheckFilter::is_available_data(const FilterContext & context) const
+bool validate_trajectory(
+  const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,
+  const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
+  const double decimate_trajectory_step_length)
 {
-  return context.odometry && context.acceleration && vehicle_info_ptr_ &&
-         context.segmented_pointcloud && context.tf_buffer && context.clock;
+  if (decimate_trajectory_step_length < autoware::motion_utils::overlap_threshold) {
+    return false;
+  }
+  if (traj_points.size() < 2) {
+    return false;
+  }
+
+  const size_t ego_seg_index =
+    autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
+      traj_points, current_pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+  // decimate_trajectory_points_from_ego() resamples only the points from ego onwards, so the
+  // points behind ego cannot make up for a degenerate remainder.
+  if (traj_points.size() - ego_seg_index < 2) {
+    return false;
+  }
+
+  for (size_t i = ego_seg_index; i + 1 < traj_points.size(); ++i) {
+    const double ds = autoware_utils_geometry::calc_distance2d(
+      traj_points.at(i).pose.position, traj_points.at(i + 1).pose.position);
+    if (ds < resample_utils::close_s_threshold) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Stands in for motion_velocity_planner/node.cpp:144-155 (check_with_log)
+bool PointCloudCollisionCheckFilter::is_available_data(
+  const CandidateTrajectory & candidate_trajectory, const FilterContext & context) const
+{
+  if (
+    !context.odometry || !context.acceleration || !vehicle_info_ptr_ ||
+    !context.segmented_pointcloud || !context.tf_buffer || !context.clock) {
+    return false;
+  }
+  return validate_trajectory(
+    candidate_trajectory.points, context.odometry->pose.pose,
+    planner_data_.ego_nearest_dist_threshold, planner_data_.ego_nearest_yaw_threshold,
+    planner_data_.trajectory_polygon_collision_check.decimate_trajectory_step_length);
 }
 
 // motion_velocity_planner_common/planner_data.cpp:239-260 and
@@ -502,7 +543,7 @@ PointCloudCollisionCheckFilter::result_t PointCloudCollisionCheckFilter::is_feas
   // memo: assume trajectory_selector subscribes "/perception/obstacle_segmentation/pointcloud" or
   // "/perception/segmented/pointcloud" that was published from ptv3 node
 
-  if (!is_available_data(context)) {
+  if (!is_available_data(candidate_trajectory, context)) {
     return ValidationResult{};
   }
   clock_ = context.clock;
