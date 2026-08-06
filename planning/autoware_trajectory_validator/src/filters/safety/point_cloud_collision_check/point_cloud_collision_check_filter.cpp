@@ -36,10 +36,11 @@ namespace polygon_utils = autoware::motion_velocity_planner::polygon_utils;
 namespace utils = autoware::motion_velocity_planner::utils;
 
 using point_cloud_collision_check::emit_debug_markers;
+using point_cloud_collision_check::filter_pointcloud_by_class_id;
 using point_cloud_collision_check::Point2d;
 using point_cloud_collision_check::PointcloudPreprocessParams;
-using point_cloud_collision_check::process_no_ground_pointcloud;
 using point_cloud_collision_check::RSSParam;
+using point_cloud_collision_check::transform_pointcloud_to_map_frame;
 
 namespace
 {
@@ -135,9 +136,11 @@ void PointCloudCollisionCheckFilter::set_planner_data_param(
   // Stands in for motion_velocity_planner/node.cpp:262-266 (set_velocity_smoother_params).
   planner_data_.velocity_smoother_.min_decel = p.common.min_accel;
   planner_data_.velocity_smoother_.min_jerk = p.common.min_jerk;
+
+  planner_data_.excluded_class_ids = p.obstacle_filtering.excluded_class_ids;
 }
 
-bool PointCloudCollisionCheckFilter::update_planner_data(
+void PointCloudCollisionCheckFilter::update_planner_data(
   const std::vector<TrajectoryPoint> & raw_trajectory_points, const FilterContext & context)
 {
   // motion_velocity_planner_common/planner_data.cpp:240-241
@@ -154,18 +157,22 @@ bool PointCloudCollisionCheckFilter::update_planner_data(
     planner_data_.is_driving_forward = is_driving_forward.value();
   }
 
-  // motion_velocity_planner/node.cpp:176-195
-  auto no_ground_pointcloud =
-    process_no_ground_pointcloud(context.segmented_pointcloud, *context.tf_buffer, context.clock);
-  if (!no_ground_pointcloud) {
-    return false;
+  const auto class_filtered_pointcloud =
+    filter_pointcloud_by_class_id(*context.segmented_pointcloud, planner_data_.excluded_class_ids);
+
+  // motion_velocity_planner/node.cpp:177-195
+  auto no_ground_pointcloud = transform_pointcloud_to_map_frame(
+    class_filtered_pointcloud, context.segmented_pointcloud->header, *context.tf_buffer,
+    context.clock);
+
+  // TF が引けなければ前処理を飛ばし、前サイクルの点群をそのまま使う。
+  if (no_ground_pointcloud) {
+    planner_data_.no_ground_pointcloud.preprocess_pointcloud(
+      std::move(*no_ground_pointcloud), raw_trajectory_points, planner_data_.current_odometry,
+      planner_data_.calculate_min_deceleration_distance(0.0).value_or(0.0),
+      planner_data_.vehicle_info_, planner_data_.trajectory_polygon_collision_check,
+      planner_data_.ego_nearest_dist_threshold, planner_data_.ego_nearest_yaw_threshold);
   }
-  planner_data_.no_ground_pointcloud.preprocess_pointcloud(
-    std::move(*no_ground_pointcloud), raw_trajectory_points, planner_data_.current_odometry,
-    planner_data_.calculate_min_deceleration_distance(0.0).value_or(0.0),
-    planner_data_.vehicle_info_, planner_data_.trajectory_polygon_collision_check,
-    planner_data_.ego_nearest_dist_threshold, planner_data_.ego_nearest_yaw_threshold);
-  return true;
 }
 
 // motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:169-230 (plan)
@@ -500,9 +507,7 @@ PointCloudCollisionCheckFilter::result_t PointCloudCollisionCheckFilter::is_feas
   }
   clock_ = context.clock;
 
-  if (!update_planner_data(candidate_trajectory.points, context)) {
-    return ValidationResult{};
-  }
+  update_planner_data(candidate_trajectory.points, context);
 
   const auto stop_obstacles = calc_obstacle_stop(candidate_trajectory.points, planner_data_);
 

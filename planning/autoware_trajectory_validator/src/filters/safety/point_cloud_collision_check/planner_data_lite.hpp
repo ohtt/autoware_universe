@@ -23,8 +23,10 @@
 #include <tf2_ros/buffer.hpp>
 
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/pose.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/header.hpp>
 
 #include <pcl/PointIndices.h>
 #include <pcl/common/io.h>
@@ -32,6 +34,7 @@
 #include <pcl/point_types.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -109,10 +112,17 @@ struct PointcloudPreprocessParams
   } euclidean_clustering;
 };
 
+/// @brief class_id フィールド（UINT8、ptv3 出力）を持つ点群から excluded_class_ids の点を除く。
+/// フィールドが無い入力は全点そのまま通す。
+pcl::PointCloud<pcl::PointXYZ> filter_pointcloud_by_class_id(
+  const sensor_msgs::msg::PointCloud2 & cloud,
+  const std::vector<std::int64_t> & excluded_class_ids);
+
+// motion_velocity_planner/node.cpp:229-259
 /// @brief 点群を map 系へ変換する。TF が引けない場合は nullopt を返す。
-std::optional<pcl::PointCloud<pcl::PointXYZ>> process_no_ground_pointcloud(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg, const tf2_ros::Buffer & tf_buffer,
-  const rclcpp::Clock::SharedPtr & clock);
+std::optional<pcl::PointCloud<pcl::PointXYZ>> transform_pointcloud_to_map_frame(
+  const pcl::PointCloud<pcl::PointXYZ> & cloud, const std_msgs::msg::Header & header,
+  const tf2_ros::Buffer & tf_buffer, const rclcpp::Clock::SharedPtr & clock);
 
 struct PlannerData
 {
@@ -207,6 +217,8 @@ public:
   double ego_nearest_yaw_threshold{};
   TrajectoryPolygonCollisionCheck trajectory_polygon_collision_check{};
   VelocitySmoother velocity_smoother_{};
+  // Plugin specific: the port source has no class_id field on its input point cloud.
+  std::vector<std::int64_t> excluded_class_ids{};
 
   std::optional<double> calculate_min_deceleration_distance(double target_velocity) const;
 };
