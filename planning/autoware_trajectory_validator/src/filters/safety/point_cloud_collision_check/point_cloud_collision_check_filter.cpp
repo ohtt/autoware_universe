@@ -100,7 +100,7 @@ PolygonParam create_polygon_param(
 }
 
 // motion_velocity_obstacle_stop_module/decision_helpers.hpp:40-48
-[[maybe_unused]] double calc_minimum_distance_to_stop(
+double calc_minimum_distance_to_stop(
   const double initial_vel, const double max_acc, const double min_acc)
 {
   if (initial_vel < 0.0) {
@@ -462,11 +462,30 @@ void PointCloudCollisionCheckFilter::upsert_pointcloud_stop_candidates(
 
 // Stands in for motion_velocity_obstacle_stop_module/obstacle_stop_module.cpp:815-934 (plan_stop)
 bool PointCloudCollisionCheckFilter::judge_stop_feasibility(
-  [[maybe_unused]] const std::vector<StopObstacle> & stop_obstacles,
-  [[maybe_unused]] const geometry_msgs::msg::Twist & twist,
-  [[maybe_unused]] double & required_distance) const
+  const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
+  double & debug_required_distance) const
 {
-  return true;
+  std::optional<double> min_dist_to_collide;
+  for (const auto & stop_obstacle : stop_obstacles) {
+    // Under RSS the obstacle keeps moving away while ego brakes
+    const double dist_obstacle_travels_while_braking = stop_obstacle.braking_dist.value_or(0.0);
+    const double traj_length_from_bumper_to_obstacle =
+      stop_obstacle.dist_to_collide_on_decimated_traj;
+
+    const double dist_to_collide =
+      traj_length_from_bumper_to_obstacle + dist_obstacle_travels_while_braking;
+    if (!min_dist_to_collide.has_value() || dist_to_collide < *min_dist_to_collide) {
+      min_dist_to_collide = dist_to_collide;
+    }
+  }
+
+  const double stop_required_distance =
+    stop_planning_param_.stop_margin +
+    calc_minimum_distance_to_stop(twist.linear.x, common_param_.max_accel, common_param_.min_accel);
+
+  debug_required_distance = stop_required_distance;
+
+  return !min_dist_to_collide.has_value() || *min_dist_to_collide >= stop_required_distance;
 }
 
 // Stands in for motion_velocity_planner/node.cpp:297-353 (on_trajectory)
@@ -481,22 +500,21 @@ PointCloudCollisionCheckFilter::result_t PointCloudCollisionCheckFilter::is_feas
   }
   clock_ = context.clock;
 
-  // Without the preprocessed point cloud there is nothing to collide against, and the debug markers
-  // would read a stale corridor from the previous cycle.
   if (!update_planner_data(candidate_trajectory.points, context)) {
     return ValidationResult{};
   }
 
   const auto stop_obstacles = calc_obstacle_stop(candidate_trajectory.points, planner_data_);
 
+  double debug_required_distance = 0.0;
+
   ValidationResult result{};
-  double required_distance = 0.0;
   result.is_feasible =
-    judge_stop_feasibility(stop_obstacles, context.odometry->twist.twist, required_distance);
+    judge_stop_feasibility(stop_obstacles, context.odometry->twist.twist, debug_required_distance);
 
   if (enable_debug_markers_) {
     emit_debug_markers(
-      debug_markers_, debug_data_, planner_data_, stop_obstacles, required_distance,
+      debug_markers_, debug_data_, planner_data_, stop_obstacles, debug_required_distance,
       result.is_feasible, candidate_trajectory.generator_id.uuid,
       rclcpp::Time{context.odometry->header.stamp});
   }

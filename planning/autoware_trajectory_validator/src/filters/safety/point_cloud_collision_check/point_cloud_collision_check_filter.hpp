@@ -114,11 +114,11 @@ private:
     const CollisionPointWithDist & nearest_collision_point,
     const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time);
 
-  /// @brief 停止対象から停止可否を判定する。未実装のため現状は常に true を返す。
-  /// @param[out] required_distance 自車の停止距離 + stop_margin。debug marker 用。
+  /// @brief 停止対象から停止可否を判定する。移植元 ObstacleStopModule の plan_stop() に相当し、
+  /// 最近傍の停止対象までの距離が自車の停止に必要な距離を下回れば infeasible。
   bool judge_stop_feasibility(
     const std::vector<StopObstacle> & stop_obstacles, const geometry_msgs::msg::Twist & twist,
-    double & required_distance) const;
+    double & debug_required_distance) const;
 
   CommonParam common_param_{};
   StopPlanningParam stop_planning_param_{};
